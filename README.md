@@ -17,13 +17,13 @@ You need an Identity service user and its web app ID, and the tenant ID.
 
 PowerShell:
 
-1. Open a PowerShell window.
+1. Open a PowerShell window in the `PowerShell examples` folder.
 2. Run a script, for example `.\00-Get-Token.ps1`.
 3. Type in the values it asks for.
 
 Python:
 
-1. Run `pip install -r requirements.txt` once.
+1. Open a terminal in the `Python examples` folder and run `pip install -r requirements.txt` once.
 2. Run a script, for example `python 01-Get-Sets.py`.
 3. Type in the values it asks for.
 
