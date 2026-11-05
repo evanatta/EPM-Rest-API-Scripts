@@ -11,7 +11,7 @@ $token = $tokenResponse.access_token
 $BaseUrl = (Read-Host 'EPM base URL (example https://api-na.epm.cyberark.cloud)').TrimEnd('/')
 $headers = @{ Authorization = "Bearer $token" }
 $SetId = Read-Host 'Set ID'
-$endpoints = @()
+$endpoints = [System.Collections.Generic.List[object]]::new()
 $offset = 0
 do {
     $uri = "$BaseUrl/API/Sets/$SetId/Endpoints/search?offset=$offset&limit=1000"
@@ -19,7 +19,7 @@ do {
     $body = @{ filter = '' } | ConvertTo-Json
     $response = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $body -ContentType 'application/json'
     $page = @($response.endpoints)
-    $endpoints += $page
+    $endpoints.AddRange([object[]]$page)
     $offset += 1000
 } while ($page.Count -eq 1000)
 foreach ($e in $endpoints) {
@@ -27,23 +27,45 @@ foreach ($e in $endpoints) {
     $lastSeen = if ($seen.Count) { ($seen | Measure-Object -Maximum).Maximum } else { [datetime]::MinValue }
     $e | Add-Member -NotePropertyName lastSeen -NotePropertyValue $lastSeen -Force
 }
-$remove = @()
-foreach ($group in ($endpoints | Group-Object { $_.name.ToLower() } | Where-Object { $_.Count -gt 1 })) {
-    $ordered = @($group.Group | Sort-Object lastSeen -Descending)
+$remove = [System.Collections.Generic.List[object]]::new()
+foreach ($group in ($endpoints | Where-Object { $_.name } | Group-Object { $_.name.ToLower() } | Where-Object { $_.Count -gt 1 })) {
+    $ordered = @($group.Group | Sort-Object @{ Expression = { $_.lastSeen }; Descending = $true }, @{ Expression = { [string]$_.installTime }; Descending = $true })
     "KEEP    $($ordered[0].name)  $($ordered[0].id)  last seen $($ordered[0].lastSeen)"
     foreach ($old in $ordered[1..($ordered.Count - 1)]) {
         "REMOVE  $($old.name)  $($old.id)  last seen $($old.lastSeen)"
-        $remove += $old
+        $remove.Add($old)
     }
 }
 "Endpoints checked: $($endpoints.Count)  Duplicates to remove: $($remove.Count)"
 if ($remove.Count -gt 0 -and (Read-Host 'Type DELETE to remove the older duplicates') -ceq 'DELETE') {
-    foreach ($old in $remove) {
+    $deleted = 0
+    $failed = 0
+    $batchSize = 10
+    for ($i = 0; $i -lt $remove.Count; $i += $batchSize) {
+        $batch = @($remove[$i..([Math]::Min($i + $batchSize, $remove.Count) - 1)])
         $uri = "$BaseUrl/API/Sets/$SetId/Endpoints/delete"
         $method = "Post"
-        $body = @{ filter = "id EQ `"$($old.id)`""; force = $false; returnIds = $true; includeAll = $false } | ConvertTo-Json
-        $response = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $body -ContentType 'application/json'
-        "$($old.name) $($old.id)"
-        $response | ConvertTo-Json -Depth 20
+        $body = @{ filter = (($batch | ForEach-Object { "id EQ `"$($_.id)`"" }) -join ' OR '); force = $false; returnIds = $true; includeAll = $false } | ConvertTo-Json
+        $done = $false
+        for ($try = 1; $try -le 5 -and -not $done; $try++) {
+            try {
+                $response = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $body -ContentType 'application/json'
+                $deleted += @($response.appliedIds).Count
+                "Batch $([int]($i / $batchSize) + 1): deleted $(@($response.appliedIds).Count) of $($batch.Count)"
+                $done = $true
+            } catch {
+                $code = [int]$_.Exception.Response.StatusCode
+                if (($code -eq 403 -or $code -eq 429) -and $try -lt 5) {
+                    "Throttled, waiting 30 seconds (try $try of 5)"
+                    Start-Sleep -Seconds 30
+                } else {
+                    "Batch $([int]($i / $batchSize) + 1) failed: $($_.Exception.Message)"
+                    $failed += $batch.Count
+                    $done = $true
+                }
+            }
+        }
+        if ($i + $batchSize -lt $remove.Count) { Start-Sleep -Seconds 6 }
     }
+    "Deleted: $deleted  Failed: $failed"
 }
