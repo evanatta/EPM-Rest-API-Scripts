@@ -10,6 +10,7 @@ PowerShell and Python scripts for the Idira (CyberArk) Endpoint Privilege Manage
 
 - `PowerShell examples` has one script for each API.
 - `Python examples` has the same scripts in Python.
+- `Requested scripts` has scripts that people have asked for, in PowerShell and Python. `Delete-Duplicate-Endpoints` finds endpoints with the same name in a set, keeps the one seen most recently and deletes the rest. It lists what it would remove first and only deletes if you type DELETE.
 
 ## How to use
 
