@@ -12,9 +12,10 @@ $BaseUrl = (Read-Host 'EPM base URL (example https://api-na.epm.cyberark.cloud)'
 $headers = @{ Authorization = "Bearer $token" }
 $SetId = Read-Host 'Set ID'
 $PackageId = Read-Host 'Package ID'
-$Platform = Read-Host 'Platform (windows, macos, linux)'
+$Platform = (Read-Host 'Platform (windows, macos, linux)').ToLowerInvariant()
 $uri = "$BaseUrl/API/Sets/$SetId/packages/configuration"
 $method = "Post"
 $body = @{ includePolicies = $false; platform = $Platform; packageId = $PackageId } | ConvertTo-Json
-$response = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $body -ContentType 'application/json'
-$response | ConvertTo-Json -Depth 20
+$response = Invoke-WebRequest -Uri $uri -Method $method -Headers $headers -Body $body -ContentType 'application/json' -UseBasicParsing
+$response.Headers['installationKey']
+$response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 20

@@ -11,7 +11,7 @@ $token = $tokenResponse.access_token
 $BaseUrl = (Read-Host 'EPM base URL (example https://api-na.epm.cyberark.cloud)').TrimEnd('/')
 $headers = @{ Authorization = "Bearer $token" }
 $SetId = Read-Host 'Set ID'
-$Filter = Read-Host 'Filter'
+$Filter = Read-Host 'Filter (empty for all)'
 $uri = "$BaseUrl/API/Sets/$SetId/Endpoints/Packages"
 $method = "Post"
 $body = @{ filter = $Filter } | ConvertTo-Json

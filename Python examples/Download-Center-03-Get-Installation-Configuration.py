@@ -18,12 +18,13 @@ base_url = input("EPM base URL (example https://api-na.epm.cyberark.cloud): ").r
 headers = {"Authorization": f"Bearer {token}"}
 set_id = input("Set ID: ")
 package_id = input("Package ID: ")
-platform = input("Platform (windows, macos, linux): ")
+platform = input("Platform (windows, macos, linux): ").strip().lower()
 uri = f"{base_url}/API/Sets/{set_id}/packages/configuration"
 method = "POST"
 body = {"includePolicies": False, "platform": platform, "packageId": package_id}
 response = requests.request(method, uri, headers=headers, json=body)
 response.raise_for_status()
+print(response.headers.get("installationKey"))
 if response.content:
     print(json.dumps(response.json(), indent=2))
 else:
