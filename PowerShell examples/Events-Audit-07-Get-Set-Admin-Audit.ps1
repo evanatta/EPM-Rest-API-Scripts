@@ -12,7 +12,7 @@ $BaseUrl = (Read-Host 'EPM base URL (example https://api-na.epm.cyberark.cloud)'
 $headers = @{ Authorization = "Bearer $token" }
 $SetId = Read-Host 'Set ID'
 $DateFrom = Read-Host 'From date (example 2026-10-01T00:00:00Z)'
-$uri = "$BaseUrl/API/Sets/$SetId/AdminAudit?dateFrom=$DateFrom&offset=0&limit=50"
+$uri = "$BaseUrl/API/Sets/$SetId/AdminAudit?DateFrom=$DateFrom&offset=0&limit=50"
 $method = "Get"
 $response = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers
 $response | ConvertTo-Json -Depth 20
