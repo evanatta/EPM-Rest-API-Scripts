@@ -2,6 +2,8 @@
 
 PowerShell and Python scripts for the Idira (CyberArk) Endpoint Privilege Manager REST APIs.
 
+> **Note:** This project is provided as-is. It is not supported by Palo Alto Networks nor an official Idira solution.
+
 ## API documentation
 
 [EPM developer documentation](https://docs.cyberark.com/epm/latest/en/content/landingpages/lpdeveloper.htm)
@@ -31,3 +33,9 @@ Python:
 Every script signs in first, then asks for the EPM URL, the set ID and anything else the call needs. Nothing is saved.
 
 Some scripts delete or change things. Read the name of the script before you run it.
+
+## Support
+
+This project is neither developed nor supported by Palo Alto Networks; any official support channels offered by the vendor are not appropriate for seeking help with the implementation or function of this project.
+
+Help should be sought by opening an issue in this repository.
