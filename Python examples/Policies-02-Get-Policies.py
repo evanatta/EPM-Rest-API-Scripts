@@ -19,7 +19,7 @@ headers = {"Authorization": f"Bearer {token}"}
 set_id = input("Set ID: ")
 uri = f"{base_url}/API/Sets/{set_id}/Policies/Server/Search?limit=100&offset=0"
 method = "POST"
-body = {}
+body = {"filter": "PolicyGroupType EQ Computer"}
 response = requests.request(method, uri, headers=headers, json=body)
 response.raise_for_status()
 if response.content:

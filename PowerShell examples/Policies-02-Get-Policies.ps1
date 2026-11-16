@@ -13,6 +13,6 @@ $headers = @{ Authorization = "Bearer $token" }
 $SetId = Read-Host 'Set ID'
 $uri = "$BaseUrl/API/Sets/$SetId/Policies/Server/Search?limit=100&offset=0"
 $method = "Post"
-$body = '{}'
+$body = '{"filter": "PolicyGroupType EQ Computer"}'
 $response = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $body -ContentType 'application/json'
 $response | ConvertTo-Json -Depth 20
