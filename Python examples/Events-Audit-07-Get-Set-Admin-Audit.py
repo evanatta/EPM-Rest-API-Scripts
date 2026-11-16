@@ -18,7 +18,7 @@ base_url = input("EPM base URL (example https://api-na.epm.cyberark.cloud): ").r
 headers = {"Authorization": f"Bearer {token}"}
 set_id = input("Set ID: ")
 date_from = input("From date (example 2026-10-01T00:00:00Z): ")
-uri = f"{base_url}/API/Sets/{set_id}/AdminAudit?dateFrom={date_from}&offset=0&limit=50"
+uri = f"{base_url}/API/Sets/{set_id}/AdminAudit?DateFrom={date_from}&offset=0&limit=50"
 method = "GET"
 response = requests.request(method, uri, headers=headers)
 response.raise_for_status()
