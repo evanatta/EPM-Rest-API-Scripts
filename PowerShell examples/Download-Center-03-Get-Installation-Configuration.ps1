@@ -69,8 +69,13 @@ function Invoke-EpmRequest {
         Stop-Epm $message
     }
     $script:EpmHeaders = $r.Headers
-    if (-not $r.Text) { return $null }
-    $r.Text | ConvertFrom-Json
+    if (-not $r.Text) { return [pscustomobject]@{ status = $r.Code } }
+    try {
+        if ($PSVersionTable.PSVersion.Major -ge 7) { $data = ConvertFrom-Json -InputObject $r.Text -NoEnumerate } else { $data = ConvertFrom-Json -InputObject $r.Text }
+    } catch {
+        Stop-Epm "The response was not valid JSON. (HTTP $($r.Code))"
+    }
+    return ,$data
 }
 function Invoke-IdentityToken {
     param([string]$Uri, $Headers)
@@ -108,5 +113,4 @@ $uri = "$BaseUrl/API/Sets/$SetId/packages/configuration"
 $method = "Post"
 $body = @{ includePolicies = $false; platform = $Platform; packageId = $PackageId } | ConvertTo-Json
 $response = Invoke-EpmRequest -Uri $uri -Method $method -Headers $headers -Body $body
-$script:EpmHeaders['installationKey']
-$response | ConvertTo-Json -Depth 20
+ConvertTo-Json -InputObject ([ordered]@{ installationKey = [string]$script:EpmHeaders['installationKey']; response = $response }) -Depth 20

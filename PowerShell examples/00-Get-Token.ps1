@@ -69,8 +69,13 @@ function Invoke-EpmRequest {
         Stop-Epm $message
     }
     $script:EpmHeaders = $r.Headers
-    if (-not $r.Text) { return $null }
-    $r.Text | ConvertFrom-Json
+    if (-not $r.Text) { return [pscustomobject]@{ status = $r.Code } }
+    try {
+        if ($PSVersionTable.PSVersion.Major -ge 7) { $data = ConvertFrom-Json -InputObject $r.Text -NoEnumerate } else { $data = ConvertFrom-Json -InputObject $r.Text }
+    } catch {
+        Stop-Epm "The response was not valid JSON. (HTTP $($r.Code))"
+    }
+    return ,$data
 }
 function Invoke-IdentityToken {
     param([string]$Uri, $Headers)
@@ -99,4 +104,4 @@ $tokenUri = "https://$TenantId.id.cyberark.cloud/oauth2/token/$WebAppId"
 $tokenHeaders = @{ Authorization = "Basic $b64" }
 $tokenResponse = Invoke-IdentityToken -Uri $tokenUri -Headers $tokenHeaders
 $token = $tokenResponse.access_token
-$token
+ConvertTo-Json -InputObject @{ access_token = $token } -Depth 20

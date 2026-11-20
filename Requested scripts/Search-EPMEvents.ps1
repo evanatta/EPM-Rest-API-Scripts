@@ -69,8 +69,13 @@ function Invoke-EpmRequest {
         Stop-Epm $message
     }
     $script:EpmHeaders = $r.Headers
-    if (-not $r.Text) { return $null }
-    $r.Text | ConvertFrom-Json
+    if (-not $r.Text) { return [pscustomobject]@{ status = $r.Code } }
+    try {
+        if ($PSVersionTable.PSVersion.Major -ge 7) { $data = ConvertFrom-Json -InputObject $r.Text -NoEnumerate } else { $data = ConvertFrom-Json -InputObject $r.Text }
+    } catch {
+        Stop-Epm "The response was not valid JSON. (HTTP $($r.Code))"
+    }
+    return ,$data
 }
 function Invoke-IdentityToken {
     param([string]$Uri, $Headers)
@@ -154,7 +159,6 @@ if ($matchSets.Count -ne 1) {
     exit 1
 }
 $SetId = $matchSets[0].Id
-"Using set: $($matchSets[0].Name)"
 $parts = @()
 if ($FileName) { $parts += "fileName $FileMatch `"$FileName`"" }
 if ($UserFilter) { $parts += "user CONTAINS `"$UserFilter`"" }
@@ -163,7 +167,6 @@ if ($EventTypes.Count -gt 0) { $parts += "eventType IN $($EventTypes -join ',')"
 $parts += "arrivalTime GE $($DateFrom.UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 $parts += "arrivalTime LE $($DateTo.UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 $Filter = $parts -join ' AND '
-"Filter: $Filter"
 $body = @{ filter = $Filter } | ConvertTo-Json
 $method = "Post"
 $events = [System.Collections.Generic.List[object]]::new()
@@ -176,15 +179,15 @@ while ($true) {
     $page = @($response.events | Where-Object { $null -ne $_ })
     $pageNumber++
     if ($page.Count -gt 0) { $events.AddRange([object[]]$page) }
-    "Page ${pageNumber}: $($page.Count) events, $($events.Count) of $($response.filteredCount) so far"
+    Write-Host "Page ${pageNumber}: $($page.Count) events, $($events.Count) of $($response.filteredCount) so far"
     $cursor = [string]$response.nextCursor
     if ($page.Count -eq 0 -or -not $cursor -or $seen.ContainsKey($cursor)) { break }
     $seen[$cursor] = $true
 }
-if ($events.Count -eq 0) {
-    'No events found.'
-} else {
+$summary = [ordered]@{ set = $matchSets[0].Name; filter = $Filter; pages = $pageNumber; totalEvents = $events.Count; csvPath = $null }
+if ($events.Count -gt 0) {
     $columns = 'arrivalTime', 'firstEventDate', 'lastEventDate', 'eventType', 'computerName', 'userName', 'fileName', 'filePath', 'fileDescription', 'productName', 'publisher', 'hash', 'policyName', 'sourceType', 'sourceName', 'processCommandLine', 'parentProcess', 'justification', 'userIsAdmin', 'eventCount', 'agentId', 'eventId'
     $events | Select-Object $columns | Export-Csv -Path $OutPath -NoTypeInformation -Encoding UTF8
-    "Exported $($events.Count) events to $OutPath"
+    $summary.csvPath = $OutPath
 }
+ConvertTo-Json -InputObject $summary -Depth 20

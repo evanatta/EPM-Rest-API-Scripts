@@ -1,6 +1,7 @@
 import base64
 import csv
 import getpass
+import json
 import os
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -103,7 +104,24 @@ def epm_request(method, uri, headers, body=None):
         if response.status_code == 429:
             message += ". The service is throttling requests, try again in a minute."
         fail(message)
+    if response.content:
+        try:
+            response.json()
+        except ValueError:
+            fail(f"The response was not valid JSON. (HTTP {response.status_code})")
     return response
+
+
+def response_data(response):
+    if response.content:
+        return response.json()
+    return {"status": response.status_code}
+
+
+def print_json(data):
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
 tenant_id = input("Tenant ID: ")
@@ -192,7 +210,6 @@ if len(matches) != 1:
         print(f"  {s.get('Name')}")
     sys.exit(1)
 set_id = matches[0]["Id"]
-print(f"Using set: {matches[0]['Name']}")
 
 parts = []
 if file_name:
@@ -206,7 +223,6 @@ if event_types:
 parts.append(f"arrivalTime GE {date_from.strftime('%Y-%m-%dT%H:%M:%SZ')}")
 parts.append(f"arrivalTime LE {date_to.strftime('%Y-%m-%dT%H:%M:%SZ')}")
 filter_text = " AND ".join(parts)
-print(f"Filter: {filter_text}")
 body = {"filter": filter_text}
 method = "POST"
 events = []
@@ -225,12 +241,12 @@ while True:
     if not page or not cursor or cursor in seen:
         break
     seen.add(cursor)
-if not events:
-    print("No events found.")
-else:
+summary = {"set": matches[0]["Name"], "filter": filter_text, "pages": page_number, "totalEvents": len(events), "csvPath": None}
+if events:
     columns = ["arrivalTime", "firstEventDate", "lastEventDate", "eventType", "computerName", "userName", "fileName", "filePath", "fileDescription", "productName", "publisher", "hash", "policyName", "sourceType", "sourceName", "processCommandLine", "parentProcess", "justification", "userIsAdmin", "eventCount", "agentId", "eventId"]
     with open(out_path, "w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(events)
-    print(f"Exported {len(events)} events to {out_path}")
+    summary["csvPath"] = out_path
+print_json(summary)

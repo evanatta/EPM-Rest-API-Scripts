@@ -30,7 +30,7 @@ Python:
 2. Run a script, for example `python 01-Get-Sets.py`.
 3. Type in the values it asks for.
 
-Every script signs in first, then asks for the EPM URL, the set ID and anything else the call needs. Nothing is saved.
+Every script signs in first, then asks for the EPM URL, the set ID and anything else the call needs. Nothing is saved. Every script prints what the API returns as indented JSON, with the same depth in PowerShell and Python.
 
 The EPM URL has to be the EPM API address for your region, for example `https://api-na.epm.cyberark.cloud`. Every script checks it before calling the API, and stops with a short message if it is an Identity URL or not an EPM address. Scripts also stop with the HTTP status and the EPM error code and message when a call fails, and wait and retry when the service asks them to slow down.
 

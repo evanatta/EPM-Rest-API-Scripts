@@ -69,8 +69,13 @@ function Invoke-EpmRequest {
         Stop-Epm $message
     }
     $script:EpmHeaders = $r.Headers
-    if (-not $r.Text) { return $null }
-    $r.Text | ConvertFrom-Json
+    if (-not $r.Text) { return [pscustomobject]@{ status = $r.Code } }
+    try {
+        if ($PSVersionTable.PSVersion.Major -ge 7) { $data = ConvertFrom-Json -InputObject $r.Text -NoEnumerate } else { $data = ConvertFrom-Json -InputObject $r.Text }
+    } catch {
+        Stop-Epm "The response was not valid JSON. (HTTP $($r.Code))"
+    }
+    return ,$data
 }
 function Invoke-IdentityToken {
     param([string]$Uri, $Headers)
@@ -109,7 +114,7 @@ do {
     $method = "Post"
     $body = @{ filter = '' } | ConvertTo-Json
     $response = Invoke-EpmRequest -Uri $uri -Method $method -Headers $headers -Body $body
-    $page = @($response.endpoints)
+    $page = @($response.endpoints | Where-Object { $null -ne $_ })
     $endpoints.AddRange([object[]]$page)
     $offset += 1000
 } while ($page.Count -eq 1000)
@@ -119,15 +124,21 @@ foreach ($e in $endpoints) {
     $e | Add-Member -NotePropertyName lastSeen -NotePropertyValue $lastSeen -Force
 }
 $remove = [System.Collections.Generic.List[object]]::new()
+$keep = [System.Collections.Generic.List[object]]::new()
 foreach ($group in ($endpoints | Where-Object { $_.name } | Group-Object { $_.name.ToLower() } | Where-Object { $_.Count -gt 1 })) {
     $ordered = @($group.Group | Sort-Object @{ Expression = { $_.lastSeen }; Descending = $true }, @{ Expression = { [string]$_.installTime }; Descending = $true })
-    "KEEP    $($ordered[0].name)  $($ordered[0].id)  last seen $($ordered[0].lastSeen)"
+    $keep.Add($ordered[0])
     foreach ($old in $ordered[1..($ordered.Count - 1)]) {
-        "REMOVE  $($old.name)  $($old.id)  last seen $($old.lastSeen)"
         $remove.Add($old)
     }
 }
-"Endpoints checked: $($endpoints.Count)  Duplicates to remove: $($remove.Count)"
+$plan = [ordered]@{
+    endpointsChecked = $endpoints.Count
+    duplicatesToRemove = $remove.Count
+    keep = @($keep | ForEach-Object { [ordered]@{ name = $_.name; id = $_.id; lastSeen = $_.lastSeen.ToString('o') } })
+    remove = @($remove | ForEach-Object { [ordered]@{ name = $_.name; id = $_.id; lastSeen = $_.lastSeen.ToString('o') } })
+}
+ConvertTo-Json -InputObject $plan -Depth 20
 if ($remove.Count -gt 0 -and (Read-Host 'Type DELETE to remove the older duplicates') -ceq 'DELETE') {
     $deleted = 0
     $batchSize = 10
@@ -137,9 +148,10 @@ if ($remove.Count -gt 0 -and (Read-Host 'Type DELETE to remove the older duplica
         $method = "Post"
         $body = @{ filter = (($batch | ForEach-Object { "id EQ `"$($_.id)`"" }) -join ' OR '); force = $false; returnIds = $true; includeAll = $false } | ConvertTo-Json
         $response = Invoke-EpmRequest -Uri $uri -Method $method -Headers $headers -Body $body
-        $deleted += @($response.appliedIds).Count
-        "Batch $([int]($i / $batchSize) + 1): deleted $(@($response.appliedIds).Count) of $($batch.Count)"
+        $applied = @($response.appliedIds | Where-Object { $null -ne $_ })
+        $deleted += $applied.Count
+        ConvertTo-Json -InputObject ([ordered]@{ batch = [int]($i / $batchSize) + 1; requested = $batch.Count; deleted = $applied.Count }) -Depth 20
         if ($i + $batchSize -lt $remove.Count) { Start-Sleep -Seconds 6 }
     }
-    "Deleted: $deleted"
+    ConvertTo-Json -InputObject ([ordered]@{ deleted = $deleted }) -Depth 20
 }

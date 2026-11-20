@@ -101,7 +101,24 @@ def epm_request(method, uri, headers, body=None):
         if response.status_code == 429:
             message += ". The service is throttling requests, try again in a minute."
         fail(message)
+    if response.content:
+        try:
+            response.json()
+        except ValueError:
+            fail(f"The response was not valid JSON. (HTTP {response.status_code})")
     return response
+
+
+def response_data(response):
+    if response.content:
+        return response.json()
+    return {"status": response.status_code}
+
+
+def print_json(data):
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
 
@@ -139,15 +156,21 @@ for endpoint in endpoints:
     if endpoint.get("name"):
         groups.setdefault(endpoint["name"].lower(), []).append(endpoint)
 remove = []
+keep = []
 for group in groups.values():
     if len(group) < 2:
         continue
     ordered = sorted(group, key=lambda e: (last_seen(e), e.get("installTime") or ""), reverse=True)
-    print(f"KEEP    {ordered[0]['name']}  {ordered[0]['id']}  last seen {last_seen(ordered[0])}")
+    keep.append(ordered[0])
     for old in ordered[1:]:
-        print(f"REMOVE  {old['name']}  {old['id']}  last seen {last_seen(old)}")
         remove.append(old)
-print(f"Endpoints checked: {len(endpoints)}  Duplicates to remove: {len(remove)}")
+
+
+def summarize(endpoint):
+    return {"name": endpoint["name"], "id": endpoint["id"], "lastSeen": last_seen(endpoint).isoformat()}
+
+
+print_json({"endpointsChecked": len(endpoints), "duplicatesToRemove": len(remove), "keep": [summarize(e) for e in keep], "remove": [summarize(e) for e in remove]})
 if remove and input("Type DELETE to remove the older duplicates: ") == "DELETE":
     deleted = 0
     batch_size = 10
@@ -159,7 +182,7 @@ if remove and input("Type DELETE to remove the older duplicates: ") == "DELETE":
         response = epm_request(method, uri, headers, body)
         applied = response.json().get("appliedIds") or []
         deleted += len(applied)
-        print(f"Batch {i // batch_size + 1}: deleted {len(applied)} of {len(batch)}")
+        print_json({"batch": i // batch_size + 1, "requested": len(batch), "deleted": len(applied)})
         if i + batch_size < len(remove):
             time.sleep(6)
-    print(f"Deleted: {deleted}")
+    print_json({"deleted": deleted})

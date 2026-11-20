@@ -100,7 +100,24 @@ def epm_request(method, uri, headers, body=None):
         if response.status_code == 429:
             message += ". The service is throttling requests, try again in a minute."
         fail(message)
+    if response.content:
+        try:
+            response.json()
+        except ValueError:
+            fail(f"The response was not valid JSON. (HTTP {response.status_code})")
     return response
+
+
+def response_data(response):
+    if response.content:
+        return response.json()
+    return {"status": response.status_code}
+
+
+def print_json(data):
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
 tenant_id = input("Tenant ID: ")
@@ -119,7 +136,4 @@ uri = f"{base_url}/API/Sets/{set_id}/Policies/ApplicationGroups/Search?limit=100
 method = "POST"
 body = {}
 response = epm_request(method, uri, headers, body)
-if response.content:
-    print(json.dumps(response.json(), indent=2))
-else:
-    print(response.status_code)
+print_json(response_data(response))

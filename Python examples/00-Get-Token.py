@@ -100,7 +100,24 @@ def epm_request(method, uri, headers, body=None):
         if response.status_code == 429:
             message += ". The service is throttling requests, try again in a minute."
         fail(message)
+    if response.content:
+        try:
+            response.json()
+        except ValueError:
+            fail(f"The response was not valid JSON. (HTTP {response.status_code})")
     return response
+
+
+def response_data(response):
+    if response.content:
+        return response.json()
+    return {"status": response.status_code}
+
+
+def print_json(data):
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    print(json.dumps(data, indent=2, ensure_ascii=False))
 
 
 tenant_id = input("Tenant ID: ")
@@ -111,4 +128,4 @@ b64 = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
 token_uri = f"https://{tenant_id}.id.cyberark.cloud/oauth2/token/{web_app_id}"
 token_headers = {"Authorization": f"Basic {b64}"}
 token = get_token(token_uri, token_headers)
-print(token)
+print_json({"access_token": token})

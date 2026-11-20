@@ -69,8 +69,13 @@ function Invoke-EpmRequest {
         Stop-Epm $message
     }
     $script:EpmHeaders = $r.Headers
-    if (-not $r.Text) { return $null }
-    $r.Text | ConvertFrom-Json
+    if (-not $r.Text) { return [pscustomobject]@{ status = $r.Code } }
+    try {
+        if ($PSVersionTable.PSVersion.Major -ge 7) { $data = ConvertFrom-Json -InputObject $r.Text -NoEnumerate } else { $data = ConvertFrom-Json -InputObject $r.Text }
+    } catch {
+        Stop-Epm "The response was not valid JSON. (HTTP $($r.Code))"
+    }
+    return ,$data
 }
 function Invoke-IdentityToken {
     param([string]$Uri, $Headers)
@@ -108,4 +113,4 @@ $uri = "$BaseUrl/API/Sets/$SetId/endpoints/Groups/$GroupId/members"
 $method = "Post"
 $body = @{ filter = $Filter; override = $false } | ConvertTo-Json
 $response = Invoke-EpmRequest -Uri $uri -Method $method -Headers $headers -Body $body
-$response | ConvertTo-Json -Depth 20
+ConvertTo-Json -InputObject $response -Depth 20
