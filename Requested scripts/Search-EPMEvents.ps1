@@ -187,6 +187,11 @@ while ($true) {
 $summary = [ordered]@{ set = $matchSets[0].Name; filter = $Filter; pages = $pageNumber; totalEvents = $events.Count; csvPath = $null }
 if ($events.Count -gt 0) {
     $columns = 'arrivalTime', 'firstEventDate', 'lastEventDate', 'eventType', 'computerName', 'userName', 'fileName', 'filePath', 'fileDescription', 'productName', 'publisher', 'hash', 'policyName', 'sourceType', 'sourceName', 'processCommandLine', 'parentProcess', 'justification', 'userIsAdmin', 'eventCount', 'agentId', 'eventId'
+    foreach ($e in $events) {
+        foreach ($c in 'arrivalTime', 'firstEventDate', 'lastEventDate') {
+            if ($e.$c -is [datetime]) { $e.$c = $e.$c.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ') }
+        }
+    }
     $events | Select-Object $columns | Export-Csv -Path $OutPath -NoTypeInformation -Encoding UTF8
     $summary.csvPath = $OutPath
 }
