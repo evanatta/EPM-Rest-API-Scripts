@@ -12,7 +12,7 @@ PowerShell and Python scripts for the Idira (CyberArk) Endpoint Privilege Manage
 
 - `PowerShell examples` has one script for each API.
 - `Python examples` has the same scripts in Python.
-- `Requested scripts` has scripts that people have asked for, in PowerShell and Python. `Delete-Duplicate-Endpoints` finds endpoints with the same name in a set, keeps the one seen most recently and deletes the rest. It lists what it would remove first and only deletes if you type DELETE.
+- `Requested scripts` has scripts that people have asked for, in PowerShell and Python. `Delete-Duplicate-Endpoints` finds endpoints with the same name in a set, keeps the one seen most recently and deletes the rest. It lists what it would remove first and only deletes if you type DELETE. `Search-EPMEvents` searches the detailed events of a set by application (file name), user and/or computer name, in any combination with at least one of them, for a date range (default the last 30 days) and an optional event type such as `ElevationRequest`. It looks up the set by name, pages through every result and writes them to a CSV file.
 
 ## How to use
 
@@ -31,6 +31,8 @@ Python:
 3. Type in the values it asks for.
 
 Every script signs in first, then asks for the EPM URL, the set ID and anything else the call needs. Nothing is saved.
+
+The EPM URL has to be the EPM API address for your region, for example `https://api-na.epm.cyberark.cloud`. Every script checks it before calling the API, and stops with a short message if it is an Identity URL or not an EPM address. Scripts also stop with the HTTP status and the EPM error code and message when a call fails, and wait and retry when the service asks them to slow down.
 
 Some scripts delete or change things. Read the name of the script before you run it.
 
