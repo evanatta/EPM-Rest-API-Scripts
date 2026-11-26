@@ -38,6 +38,14 @@ Some scripts delete or change things. Read the name of the script before you run
 
 ## Support
 
-This project is neither developed nor supported by Palo Alto Networks; any official support channels offered by the vendor are not appropriate for seeking help with the implementation or function of this project.
+This project is neither affiliated with nor endorsed, developed, or supported by Palo Alto Networks, Idira, or CyberArk. It is not an official Idira or CyberArk solution. Any official support channels offered by the vendor are not appropriate for seeking help with the implementation or function of this project.
+
+Idira, CyberArk, Endpoint Privilege Manager (EPM), and Palo Alto Networks are trademarks of their respective owners.
+
+This project is provided as-is, with no warranty. Use it at your own risk, and test in a non-production environment first.
 
 Help should be sought by opening an issue in this repository.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
